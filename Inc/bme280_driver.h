@@ -5,7 +5,7 @@
 
 #define	I2C_BUFFER_LEN 			28
 
-int8_t bme280_sensor_init(I2C_HandleTypeDef *handle_i2c1);
+int8_t bme280_sensor_init(void);
 int8_t bme280_sensor_read(float *temp, float *press, float *hum);
 
 #endif //__BME280_DRIVER_H

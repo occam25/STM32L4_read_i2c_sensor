@@ -1,17 +1,16 @@
 
 #include "stm32l4xx_hal.h"
 #include "bme280_driver.h"
+#include "main.h"
 
 static struct bme280_dev dev;
-I2C_HandleTypeDef *hi2c1;
 
 int8_t bme280_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 int8_t bme280_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 void user_delay_ms(uint32_t period);
 
-int8_t bme280_sensor_init(I2C_HandleTypeDef *handle_i2c1)
+int8_t bme280_sensor_init(void)
 {
-	hi2c1 = handle_i2c1;
 	dev.dev_id = BME280_I2C_ADDR_SEC; //BME280_I2C_ADDR_PRIM;
 	dev.intf = BME280_I2C_INTF;
 	dev.read = bme280_i2c_read;
@@ -79,8 +78,6 @@ int8_t bme280_sensor_read(float *temp, float *press, float *hum)
 
 int8_t bme280_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t len)
 {
-	if(hi2c1 == NULL)
-		return -1;
 
 	int8_t result = 0; /* Return 0 for Success, non-zero for failure */
     HAL_StatusTypeDef status = HAL_OK;
@@ -88,9 +85,9 @@ int8_t bme280_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, ui
 	uint8_t stringpos = 0;
 	array[0] = reg_addr;
 
-	while (HAL_I2C_IsDeviceReady(hi2c1, (uint16_t)(dev_addr<<1), 3, 100) != HAL_OK) {}
+	while (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(dev_addr<<1), 3, 100) != HAL_OK) {}
 
-    status = HAL_I2C_Mem_Read(hi2c1,						// i2c handle
+    status = HAL_I2C_Mem_Read(&hi2c1,						// i2c handle
     						  (uint16_t)(dev_addr<<1),		// i2c address, left aligned
 							  (uint16_t)reg_addr,			// register address
 							  I2C_MEMADD_SIZE_8BIT,			// bme280 uses 8bit register addresses
@@ -112,14 +109,12 @@ int8_t bme280_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, ui
 
 int8_t bme280_i2c_write(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t len)
 {
-	if(hi2c1 == NULL)
-		return -1;
 
     HAL_StatusTypeDef status = HAL_OK;
 
-    while (HAL_I2C_IsDeviceReady(hi2c1, (uint8_t)(dev_addr<<1), 3, 100) != HAL_OK) {}
+    while (HAL_I2C_IsDeviceReady(&hi2c1, (uint8_t)(dev_addr<<1), 3, 100) != HAL_OK) {}
 
-    status = HAL_I2C_Mem_Write(hi2c1,						// i2c handle
+    status = HAL_I2C_Mem_Write(&hi2c1,						// i2c handle
     						  (uint16_t)(dev_addr<<1),		// i2c address, left aligned
 							  (uint16_t)reg_addr,			// register address
 							  I2C_MEMADD_SIZE_8BIT,			// bme280 uses 8bit register addresses

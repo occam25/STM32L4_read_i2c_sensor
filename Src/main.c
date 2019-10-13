@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "string.h"
+#include "stdio.h"
 #include "bme280_driver.h"
 /* USER CODE END Includes */
 
@@ -98,13 +99,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  uint8_t dev_addr = 0x76;
-  while (HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(dev_addr<<1), 3, 100) != HAL_OK) {
-
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-  }
-
-  if(0 != bme280_sensor_init(&hi2c1)){
+  if(0 != bme280_sensor_init()){
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 	  debugPrint(&huart2, "BME280 sensor initialization failed\r\n");
   }
@@ -113,12 +108,20 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   float temp, press, hum;
+  char line[80];
   while (1)
   {
+	  temp = 0;
+	  press = 0;
+	  hum = 0;
 	  HAL_Delay(1000);
 	  if(0 != bme280_sensor_read(&temp, &press, &hum)){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 		  debugPrint(&huart2, "BME280 sensor read failed\r\n");
+	  }else{
+
+		  snprintf(line, 80, "%0.2lf deg C, %0.2lf hPa, %0.2lf%%\r\n", temp, press, hum);
+		  debugPrint(&huart2, line);
 	  }
 
 
