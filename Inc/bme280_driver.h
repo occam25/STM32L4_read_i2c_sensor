@@ -3,9 +3,8 @@
 
 #include "bme280.h"
 
-#define	I2C_BUFFER_LEN 			28
+extern float temp, press, hum;
 
-int8_t bme280_sensor_init(void);
-int8_t bme280_sensor_read(float *temp, float *press, float *hum);
+s32 bme280_data_readout(void);
 
 #endif //__BME280_DRIVER_H
