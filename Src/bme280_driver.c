@@ -8,6 +8,8 @@
 
 static struct bme280_dev dev;
 
+float temp, press, hum;
+
 int8_t bme280_i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 int8_t bme280_i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 void user_delay_ms(uint32_t period);
@@ -48,7 +50,7 @@ int8_t bme280_sensor_init(void)
 	return 0;
 }
 
-int8_t bme280_sensor_read(float *temp, float *press, float *hum)
+int8_t bme280_sensor_read(void)
 {
 	struct bme280_data comp_data;
 //	uint8_t settings_sel;
@@ -83,18 +85,18 @@ int8_t bme280_sensor_read(float *temp, float *press, float *hum)
 
     /* Read was ok, update values */
 #ifdef BME280_FLOAT_ENABLE
-    *temp = comp_data.temperature;
-    *press = 0.01 * comp_data.pressure;
-    *hum = comp_data.humidity;
+    temp = comp_data.temperature;
+    press = 0.01 * comp_data.pressure;
+    hum = comp_data.humidity;
 #else
 #ifdef BME280_64BIT_ENABLE
-    *temp = 0.01f * comp_data.temperature;
-    *press = 0.0001f * comp_data.pressure;
-    *hum = 1.0f / 1024.0f * comp_data.humidity;
+    temp = 0.01f * comp_data.temperature;
+    press = 0.0001f * comp_data.pressure;
+    hum = 1.0f / 1024.0f * comp_data.humidity;
 #else
-    *temp = 0.01f * comp_data.temperature;
-    *press = 0.01f * comp_data.pressure;
-    *hum = 1.0f / 1024.0f * comp_data.humidity;
+    temp = 0.01f * comp_data.temperature;
+    press = 0.01f * comp_data.pressure;
+    hum = 1.0f / 1024.0f * comp_data.humidity;
 #endif
 #endif
 
