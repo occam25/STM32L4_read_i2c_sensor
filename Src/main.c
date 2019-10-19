@@ -99,10 +99,6 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  if(0 != bme280_sensor_init()){
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-	  debugPrint(&huart2, "BME280 sensor initialization failed\r\n");
-  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -111,19 +107,17 @@ int main(void)
   char line[80];
   while (1)
   {
-	  temp = 0;//+++
-	  press = 0;
-	  hum = 0;
-	  //HAL_Delay(1000);
-	  if(0 != bme280_sensor_read()){
+
+	  HAL_Delay(1000);
+	  if(0 != bme280_data_readout()){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 		  debugPrint(&huart2, "BME280 sensor read failed\r\n");
 	  }else{
 
+		  //snprintf(line, 80, "%0.2lf deg C, %0.2lf hPa, %0.2lf%%\r\n", temp, press, hum);
 		  snprintf(line, 80, "%0.2lf deg C, %0.2lf hPa, %0.2lf%%\r\n", temp, press, hum);
 		  debugPrint(&huart2, line);
 	  }
-
 
     /* USER CODE END WHILE */
 
