@@ -1,6 +1,9 @@
 
 #include "stm32l4xx_hal.h"
 #include "bme280_driver.h"
+#include "stdio.h"
+#include "string.h"
+
 #include "main.h"
 
 static struct bme280_dev dev;
@@ -11,6 +14,9 @@ void user_delay_ms(uint32_t period);
 
 int8_t bme280_sensor_init(void)
 {
+
+	debugPrint(&huart2, "Initializating I2C\r\n");
+
 	dev.dev_id = BME280_I2C_ADDR_SEC; //BME280_I2C_ADDR_PRIM;
 	dev.intf = BME280_I2C_INTF;
 	dev.read = bme280_i2c_read;
@@ -22,35 +28,55 @@ int8_t bme280_sensor_init(void)
 	if(result != BME280_OK)
 		return -1;
 
+    /* Recommended mode of operation: Indoor navigation */
+//    dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+//    dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+//    dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+//    dev.settings.filter = BME280_FILTER_COEFF_16;
+    dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+    dev.settings.osr_p = BME280_OVERSAMPLING_1X;
+    dev.settings.osr_t = BME280_OVERSAMPLING_1X;
+    dev.settings.filter = BME280_FILTER_COEFF_OFF;
+
+    uint8_t settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+
+    result = bme280_set_sensor_settings(settings_sel, &dev);
+
+	if(result != BME280_OK)
+		return -1;
+
 	return 0;
 }
 
 int8_t bme280_sensor_read(float *temp, float *press, float *hum)
 {
 	struct bme280_data comp_data;
-	uint8_t settings_sel;
+//	uint8_t settings_sel;
 
-    /* Recommended mode of operation: Indoor navigation */
-    dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-    dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-    dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-    dev.settings.filter = BME280_FILTER_COEFF_16;
+//    /* Recommended mode of operation: Indoor navigation */
+//    dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+//    dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+//    dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+//    dev.settings.filter = BME280_FILTER_COEFF_16;
+//
+//    settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+//
+//    int8_t result = bme280_set_sensor_settings(settings_sel, &dev);
+//
+//    if(result != BME280_OK)
+//    	return -1;
 
-    settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-    int8_t result = bme280_set_sensor_settings(settings_sel, &dev);
-
-    if(result != BME280_OK)
-    	return -1;
+	debugPrint(&huart2, "Setting forced mode\r\n");
 
     /* configure forced mode */
-    result = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+	uint8_t result = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
     if(result != BME280_OK)
     	return -1;
 
     /* wait for the measurements to complete */
-    dev.delay_ms(40);
+    dev.delay_ms(1000);//40
 
+    debugPrint(&huart2, "Getting sensor data\r\n");
     result = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
     if(result != BME280_OK)
     	return -1;
@@ -76,8 +102,56 @@ int8_t bme280_sensor_read(float *temp, float *press, float *hum)
 
 }
 
+void huart_transmit_hex(uint8_t hex)
+{
+	char digit[16] =
+	{'0','1','2','3','4','5','6','7',
+	'8','9','A','B','C','D','E','F'};
+
+	uint8_t c;
+	c = digit[hex >> 4];
+	HAL_UART_Transmit(&huart2, &c, 1, 10);
+	c = digit[hex & 0x0F];
+	HAL_UART_Transmit(&huart2, &c, 1, 10);
+	c = ' ';
+	HAL_UART_Transmit(&huart2, &c, 1, 10);
+}
+
+#define I2C_DEBUG_WRITE		1
+#define I2C_DEBUG_READ		0
+#define DEBUG_LINE_LEN		116
+void i2c_debug(char type, uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t len, uint8_t *output, uint16_t output_len)
+{
+	char line[DEBUG_LINE_LEN];
+
+	if(type == I2C_DEBUG_WRITE){
+		snprintf(line, 80, "[W] 0x%02X 0x%02X 0x%02X %02d\r\n", dev_addr, reg_addr, *reg_data, len);
+		debugPrint(&huart2, line);
+	}else{
+		snprintf(line, 80, "[R] 0x%02X 0x%02X 0x%02X %02d: ", dev_addr, reg_addr, *reg_data, len);
+		debugPrint(&huart2, line);
+		for(int i = 0;i < len;i++){
+			huart_transmit_hex(output[i]);
+		}
+		debugPrint(&huart2, "\r\n");
+//		int line_len = strlen(line);
+//		for(int i = 0;i < len;i++) {
+//			snprintf(line + line_len + i, 80 - line_len - i - 2, " %02X", output[i]);
+//		}
+//		line_len = strlen(line);
+//		line[line_len] = '\r';
+//		line[line_len+1] = '\n';
+	}
+
+
+}
+
 int8_t bme280_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t len)
 {
+
+//	char line[80];
+//	snprintf(line, 80, "[R] 0x%02X 0x%02X 0x%02X %d: ", dev_addr, reg_addr, *reg_data, len);
+
 
 	int8_t result = 0; /* Return 0 for Success, non-zero for failure */
     HAL_StatusTypeDef status = HAL_OK;
@@ -95,20 +169,27 @@ int8_t bme280_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, ui
 							  len,							// how many bytes to expect returned
 							  100);							// timeout
 
+
     if (status != HAL_OK)
     {
     	// The BME280 API calls for 0 return value as a success, and -1 returned as failure
-    	result = -1;
+    	return -1;
     }
 	for (stringpos = 0; stringpos < len; stringpos++) {
 		*(reg_data + stringpos) = array[stringpos];
 	}
+
+	i2c_debug(I2C_DEBUG_READ, dev_addr, reg_addr, reg_data, len, array, len);
 
 	return result;
 }
 
 int8_t bme280_i2c_write(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t len)
 {
+
+	char line[80];
+	snprintf(line, 80, "[W] 0x%02X 0x%02X 0x%02X %02d\r\n", dev_addr, reg_addr, *reg_data, len);
+	debugPrint(&huart2, line);
 
     HAL_StatusTypeDef status = HAL_OK;
 

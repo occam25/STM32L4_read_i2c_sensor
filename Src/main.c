@@ -111,10 +111,10 @@ int main(void)
   char line[80];
   while (1)
   {
-	  temp = 0;
+	  temp = 0;//+++
 	  press = 0;
 	  hum = 0;
-	  HAL_Delay(1000);
+	  //HAL_Delay(1000);
 	  if(0 != bme280_sensor_read(&temp, &press, &hum)){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 		  debugPrint(&huart2, "BME280 sensor read failed\r\n");
@@ -124,6 +124,7 @@ int main(void)
 		  debugPrint(&huart2, line);
 	  }
 
+	  while(1){HAL_Delay(1000);}//+++
 
     /* USER CODE END WHILE */
 
